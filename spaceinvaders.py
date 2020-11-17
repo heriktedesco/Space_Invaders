@@ -7,6 +7,10 @@ from pygame import *
 import sys
 from os.path import abspath, dirname
 from random import choice
+from models import Score
+
+
+score_total = 0
 
 BASE_PATH = abspath(dirname(__file__))
 FONT_PATH = BASE_PATH + '/fonts/'
@@ -478,6 +482,7 @@ class SpaceInvaders(object):
 
         score = scores[row]
         self.score += score
+        score_total = score
         return score
 
     def create_main_menu(self):
@@ -563,6 +568,10 @@ class SpaceInvaders(object):
             self.screen.blit(self.background, (0, 0))
         elif passed > 3000:
             self.mainScreen = True
+
+
+        creation = Score.create(
+            score=score_total)
 
         for e in event.get():
             if self.should_exit(e):
