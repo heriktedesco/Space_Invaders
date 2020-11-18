@@ -4,13 +4,16 @@
 # Created by Lee Robinson
 
 from pygame import *
+import pygame.draw
 import sys
+import numpy as np
+import peewee
 from os.path import abspath, dirname
 from random import choice
 from models import Score
 
 
-score_total = 0
+
 
 BASE_PATH = abspath(dirname(__file__))
 FONT_PATH = BASE_PATH + '/fonts/'
@@ -336,6 +339,7 @@ class SpaceInvaders(object):
         #   ALSA lib pcm.c:7963:(snd_pcm_recover) underrun occurred
         mixer.pre_init(44100, -16, 1, 4096)
         init()
+        self.score_total = 0
         self.clock = time.Clock()
         self.caption = display.set_caption('Space Invaders')
         self.screen = SCREEN
@@ -356,6 +360,7 @@ class SpaceInvaders(object):
         self.enemy4Text = Text(FONT, 25, '   =  ?????', RED, 368, 420)
         self.scoreText = Text(FONT, 20, 'Score', WHITE, 5, 5)
         self.livesText = Text(FONT, 20, 'Lives ', WHITE, 640, 5)
+        self.leaderboardText = Text(FONT, 50, "Scoreboard: ", WHITE, 150, 100)
 
         self.life1 = Life(715, 3)
         self.life2 = Life(742, 3)
@@ -363,6 +368,7 @@ class SpaceInvaders(object):
         self.livesGroup = sprite.Group(self.life1, self.life2, self.life3)
 
     def reset(self, score):
+        self.score_total = 0
         self.player = Ship()
         self.playerGroup = sprite.Group(self.player)
         self.explosionsGroup = sprite.Group()
@@ -418,6 +424,23 @@ class SpaceInvaders(object):
 
             self.note.play()
             self.noteTimer += self.enemies.moveTime
+
+    def background_stars(self, game):
+        # The background stars:
+        # Set the position:
+        self.stars_x = np.random.rand(5) * 800
+        self.stars_y = np.random.rand(5) * 600
+        # Set the velocity:
+        self.stars_v = np.zeros(5)
+        for i in np.arange(5):
+            self.stars_v[i] = int(0.5 + np.random.uniform() * 0.1)
+        game.stars_y = (game.stars_y + game.stars_v * 0.2) % 600
+        for i in range(5):
+            game.stars_x[i] = game.stars_x[i] if not game.stars_v[i] else \
+                game.stars_x[i] + 0.1 * int((np.random.rand() - 0.5) * 2.1)
+            pygame.draw.aaline(game.screen, WHITE,
+                               (int(game.stars_x[i]), int(game.stars_y[i])),
+                               (int(game.stars_x[i]), int(game.stars_y[i])))
 
     @staticmethod
     def should_exit(evt):
@@ -482,7 +505,6 @@ class SpaceInvaders(object):
 
         score = scores[row]
         self.score += score
-        score_total = score
         return score
 
     def create_main_menu(self):
@@ -560,27 +582,65 @@ class SpaceInvaders(object):
         passed = currentTime - self.timer
         if passed < 750:
             self.gameOverText.draw(self.screen)
-        elif 750 < passed < 1500:
+        if 750 < passed < 1500:
             self.screen.blit(self.background, (0, 0))
-        elif 1500 < passed < 2250:
+        if 1500 < passed < 2250:
             self.gameOverText.draw(self.screen)
-        elif 2250 < passed < 2750:
+        if 2250 < passed < 2750:
             self.screen.blit(self.background, (0, 0))
-        elif passed > 3000:
-            self.mainScreen = True
-
-
-        creation = Score.create(
-            score=score_total)
+        if passed > 3000:
+            creation = Score.create(
+                score=self.score)
+            self.startGame = False
+            self.gameOver = False
+            self.mainScreen = False
+            self.scoreBoard = True
 
         for e in event.get():
             if self.should_exit(e):
                 sys.exit()
 
+    def create_scoreboard(self, scores):
+        self.screen.blit(self.background, (0, 0))
+        self.background_stars(game)
+
+        self.scoreboardText = Text(FONT, 20, "1- " + str(scores[0]), WHITE, 235, 201)
+        self.scoreboardText2 = Text(FONT, 20, "2- " + str(scores[1]), WHITE, 235, 221)
+        self.scoreboardText3 = Text(FONT, 20, "3- " + str(scores[2]), WHITE, 235, 241)
+        self.scoreboardText4 = Text(FONT, 20, "4- " + str(scores[3]), WHITE, 235, 261)
+        self.scoreboardText5 = Text(FONT, 20, "5- " + str(scores[4]), WHITE, 235, 281)
+        self.scoreboardText6 = Text(FONT, 20, "6- " + str(scores[5]), WHITE, 435, 201)
+        self.scoreboardText7 = Text(FONT, 20, "7- " + str(scores[6]), WHITE, 435, 221)
+        self.scoreboardText8 = Text(FONT, 20, "8- " + str(scores[7]), WHITE, 435, 241)
+        self.scoreboardText9 = Text(FONT, 20, "9- " + str(scores[8]), WHITE, 435, 261)
+        self.scoreboardText10 = Text(FONT, 20, "10- " + str(scores[9]), WHITE, 435, 281)
+
+        self.leaderboardText.draw(self.screen)
+        self.scoreboardText.draw(self.screen)
+        self.scoreboardText2.draw(self.screen)
+        self.scoreboardText3.draw(self.screen)
+        self.scoreboardText4.draw(self.screen)
+        self.scoreboardText5.draw(self.screen)
+        self.scoreboardText6.draw(self.screen)
+        self.scoreboardText7.draw(self.screen)
+        self.scoreboardText8.draw(self.screen)
+        self.scoreboardText9.draw(self.screen)
+        self.scoreboardText10.draw(self.screen)
+
+        for e in event.get():
+            if self.should_exit(e):
+                sys.exit()
+
+    def order_scores(self):
+        self.scores = [i.score for i in Score.select()]
+        self.top_scores = sorted(self.scores, reverse=True)
+        return self.top_scores
+
     def main(self):
         while True:
             if self.mainScreen:
                 self.screen.blit(self.background, (0, 0))
+                self.score_total = 0
                 self.titleText.draw(self.screen)
                 self.titleText2.draw(self.screen)
                 self.enemy1Text.draw(self.screen)
@@ -643,6 +703,10 @@ class SpaceInvaders(object):
                 # Reset enemy starting position
                 self.enemyPosition = ENEMY_DEFAULT_POSITION
                 self.create_game_over(currentTime)
+
+            elif self.scoreBoard:
+                self.scores = self.order_scores()
+                self.create_scoreboard(self.scores)
 
             display.update()
             self.clock.tick(60)
